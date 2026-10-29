@@ -1,0 +1,109 @@
+backend:
+  image: {}
+  persistence:
+    storageClass: ${storage_class_name}
+  serviceAccount:
+    create: true
+    irsaRoleArn: ${helpdesk_backend_irsa_role_arn}
+config:
+  authFrontendBaseUrl: https://${helpdesk_dns}
+  authAllowedOrigins: https://${helpdesk_dns}
+  infraRegion: ${infra_region}
+  mongoDbDatabaseName: duplo-ai-helpdesk
+  aiStudioIsMasterDisabled: true
+%{ if auth_super_users != "" ~}
+  authSuperUsers: ${auth_super_users}
+%{ endif ~}
+frontend:
+  image: {}
+xterm:
+  hostname: https://${helpdesk_xterm_dns}
+ingress:
+  annotations:
+    alb.ingress.kubernetes.io/certificate-arn: ${certificate_arn}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/security-groups: ${alb_sg_ids}
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/subnets: ${public_subnet_ids}
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=180
+    external-dns.alpha.kubernetes.io/hostname: ${helpdesk_dns},${helpdesk_xterm_dns}
+  className: alb
+  enabled: true
+%{ if mongodb_enabled ~}
+mongodb:
+  auth:
+    rootUser: helpdesk
+    rootPassword: "${mongodb_root_password}"
+  persistence:
+    storageClass: gp3
+  useStatefulSet: true
+  backup:
+    # Disabled: use the chart-managed mongodbBackup section instead (see chart comment).
+    # Enabling this alongside mongodbBackup.enabled=true renders two PVCs with the same
+    # name (<release>-mongodb-mongodump), causing Helm install to fail.
+    enabled: false
+%{ else ~}
+# External database (AWS DocumentDB): no in-cluster MongoDB StatefulSet, Service or backup
+# CronJob is rendered. The backend/collector connect via secrets.mongoDbConnectionString.
+mongodb:
+  enabled: false
+%{ endif ~}
+secrets:
+  # OAuth provider credentials. An empty string ("") disables that provider.
+  googleClientId: "${google_client_id}"
+  googleClientSecret: "${google_client_secret}"
+  microsoftClientId: "${microsoft_client_id}"
+  microsoftClientSecret: "${microsoft_client_secret}"
+  microsoftTenantId: "${microsoft_tenant_id}"
+  jwtSharedSecret: "${jwt_shared_secret}"
+%{ if !mongodb_enabled ~}
+  mongoDbConnectionString: "${mongodb_connection_string}"
+%{ endif ~}
+slackBackend:
+  enabled: ${slack_backend_enabled}
+%{ if slack_backend_enabled ~}
+  image:
+    tag: "${slack_backend_image_tag}"
+  env:
+    helpdeskDefaultAgent: "${slack_helpdesk_default_agent}"
+    helpdeskDefaultWorkspace: "${slack_helpdesk_default_workspace}"
+  envFromSecret:
+    create: true
+    data:
+      DUPLO_SLACK_APP_PORTALS: ${slack_app_portals}
+      SLACK_APP_TOKEN: ${slack_app_token}
+      SLACK_BOT_TOKEN: ${slack_bot_token}
+      helpdeskDefaultAgent: "${slack_helpdesk_default_agent}"
+      helpdeskDefaultWorkspace: "${slack_helpdesk_default_workspace}"
+    secretName: slack-managed-portals
+%{ endif ~}
+%{ if mongodb_enabled ~}
+mongodbBackup:
+  storage:
+    storageClass: ${storage_class_name}
+    accessModes:
+      - ReadWriteMany
+%{ endif ~}
+duploAgent:
+  image: {}
+  persistence:
+    storageClass: ${storage_class_name}
+  serviceAccount:
+    create: true
+    irsaRoleArn: ${helpdesk_agent_irsa_role_arn}
+collector:
+  enabled: ${helpdesk_analytics_collector_enabled}
+  product:
+    instance: ${helpdesk_analytics_collector_app_instance}
+  serviceAccount:
+    create: true
+    irsaRoleArn: ${helpdesk_analytics_collector_irsa_role_arn}
+internalIngress:
+  enabled: false
+bedrockSubscription:
+  enabled: ${bedrock_subscription_enabled}
+  serviceAccount:
+    create: false
+    name: ${bedrock_service_account_name}

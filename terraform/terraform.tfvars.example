@@ -1,0 +1,60 @@
+# Copy to terraform.tfvars (gitignored) and fill in the values below.
+# Full reference for every variable: ../docs/VARIABLES.md
+#
+# AWS credentials are NOT set here — Terraform uses your normal AWS CLI credentials
+# (AWS_PROFILE / AWS_ACCESS_KEY_ID env vars, SSO, or aws_profile below).
+
+# ── Required ──────────────────────────────────────────────────────────────────
+aws_region = "us-east-1"
+
+# Public hostname for Helpdesk. The Route53 hosted zone for it (here: example.com)
+# must already exist in this AWS account. The xterm hostname
+# (helpdesk-xterm.example.com) and the zone name are derived from it.
+helpdesk_dns = "helpdesk.example.com"
+
+# Google OAuth client for sign-in. Authorized redirect URI to register in Google:
+#   https://<helpdesk_dns>/signin-google
+google_client_id     = "CHANGE_ME.apps.googleusercontent.com"
+google_client_secret = "CHANGE_ME"
+
+# ── Recommended ───────────────────────────────────────────────────────────────
+# Comma-separated emails that get super-user (admin) rights after signing in.
+auth_super_users = "admin@example.com"
+
+# ── Optional: everything below has a working default ──────────────────────────
+
+# aws_profile = "my-aws-profile"
+# prefix      = "duplo-ai"          # resource name prefix: <prefix>-vpc, <prefix>-eks, ...
+
+# Override the names derived from helpdesk_dns:
+# helpdesk_xterm_dns = "helpdesk-xterm.example.com"
+# route53_zone_name  = "example.com"
+
+# Secrets — generated randomly and kept in Terraform state when left empty:
+# jwt_shared_secret     = ""
+# mongodb_root_password = ""
+
+# Worker nodes
+# node_instance_type = "t3a.large"
+# node_desired       = 2
+# node_min           = 2
+# node_max           = 2
+
+# Database: "mongodb" (in-cluster, default) or "documentdb" (managed AWS DocumentDB)
+# database_backend               = "documentdb"
+# documentdb_deletion_protection = true
+
+# Microsoft (Entra) sign-in, in addition to or instead of Google
+# microsoft_oauth_enabled = true
+# microsoft_client_id     = "..."
+# microsoft_client_secret = "..."
+# microsoft_tenant_id     = "common"   # or a tenant GUID
+# google_oauth_enabled    = false      # if Microsoft is the only provider
+
+# Analytics collector (on by default — see README "Telemetry")
+# helpdesk_analytics_collector_enabled = false
+
+# common_tags = {
+#   Project   = "helpdesk"
+#   ManagedBy = "Terraform"
+# }
